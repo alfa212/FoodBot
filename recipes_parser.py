@@ -4,8 +4,9 @@ from random import choice
 from string import digits
 
 import requests
-from requests import HTTPError
 from bs4 import BeautifulSoup
+from requests import HTTPError
+from transliterate import get_translit_function
 
 
 DIET_TYPES = ['classic_diet', 'keto_diet', 'vegan_diet']
@@ -21,8 +22,11 @@ def save_recipes_json(recipes):
 def get_image(recipe_image_url, title, folder='images/'):
     url = recipe_image_url
 
+    translit_ru = get_translit_function('ru')
+    file_name = translit_ru(title, reversed=True).replace(' ', '_')
+
     os.makedirs(folder, exist_ok=True)
-    file_path = os.path.join(folder, f'{title}.jpg')
+    file_path = os.path.join(folder, f'{file_name}.jpg')
     response = requests.get(url)
     response.raise_for_status()
     with open(file_path, 'wb') as file:
@@ -32,7 +36,7 @@ def get_image(recipe_image_url, title, folder='images/'):
 
 
 def parse_recipe_page(soup):
-    title = soup.find('article', class_='item-bl item-about').find('h1').text
+    title = soup.find('article', class_='item-bl item-about').find('h1').text.replace('"', '')
 
     ingredients = soup.find('div', class_='ingredients-bl').find_all('li')
     recipe_ingredients = []
