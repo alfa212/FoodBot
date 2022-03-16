@@ -1,6 +1,7 @@
 import os
 
 import telebot
+from telebot import types
 from dotenv import load_dotenv
 
 
@@ -9,7 +10,10 @@ def user_registration(token):
 
     @bot.message_handler(commands=['start', 'help'])
     def send_welcome(message):
-        bot.reply_to(message, "Howdy, how are you doing?")
+        markup = types.InlineKeyboardMarkup()
+        button1 = types.InlineKeyboardButton("Оформить подписку", url='https://test.test')
+        markup.add(button1)
+        bot.send_message(message.chat.id, "Для оформления подписки нажмите на кнопку", reply_markup=markup)
 
     bot.infinity_polling()
 
