@@ -1,3 +1,4 @@
+import json
 import os
 
 import telebot
@@ -47,6 +48,12 @@ if __name__ == '__main__':
     load_dotenv()
 
     tg_token = os.getenv('TELEGRAM_BOT_TOKEN')
+
+    try:
+        with open('users.json', mode='r', encoding='utf-8') as file:
+            users = json.loads(file.read())
+    except FileNotFoundError:
+        users = {}
 
     user_registration(tg_token)
 
