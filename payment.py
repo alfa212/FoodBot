@@ -1,10 +1,35 @@
+import json
+import logging
 import os
+from random import choice
 
 import telebot
 from telebot import types
 from dotenv import load_dotenv
 
 import keyboard as kb
+
+
+def get_recipe_info():
+    with open('recipes.json', 'r', encoding='utf-8') as json_file:
+        recipes = json.load(json_file)
+    rand_recipe_num = choice(list(recipes))
+
+    recipe = recipes[rand_recipe_num]
+
+    title = recipe['title']
+    ingredients = recipe['ingredients']
+    recipe_steps = recipe['recipe_steps']
+    image_path = recipe['image_path']
+
+    recipe_html = f"""
+    <img src='{image_path}'>
+    <p><b>{title}</b></p>
+    <p>{' '.join(ingredients)}</p>
+    <p>{' '.join(recipe_steps)}</p>
+    """
+    return recipe_html
+
 
 def user_payment(token, pay_token):
     bot = telebot.TeleBot(token, parse_mode=None)
@@ -64,22 +89,49 @@ def user_payment(token, pay_token):
 
     @bot.message_handler(commands=['account'])
     def account(message):
-        bot.send_message(message.chat.id, 'Добро пожаловать в личный кабинет')
-        bot.send_message(message.chat.id, "Для проверки статуса подписки нажмите на кнопку", reply_markup=kb.inline_kb_full)
+        bot.send_message(
+            message.chat.id,
+            'Добро пожаловать в личный кабинет'
+        )
+        bot.send_message(
+            message.chat.id,
+            "Для проверки статуса подписки нажмите на кнопку",
+            reply_markup=kb.inline_kb_full
+        )
 
 
     @bot.callback_query_handler(func=lambda call: True)
-    def process_check_subs(callback_query):
+    def process_check_btn(callback_query):
         answer = callback_query.data
+        chat_id = callback_query.message.chat.id
+        message_id = callback_query.message.id
         if answer == 'check_subs':
             bot.answer_callback_query(callback_query.id)
-            bot.send_message(callback_query.from_user.id, 'Подписка оформлена!')
+            bot.edit_message_text(
+                'Подписка оформлена',
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=kb.inline_kb_full
+            )
         elif answer == 'get_recipe':
+            recipe_html = get_recipe_info()
             bot.answer_callback_query(callback_query.id)
-            bot.send_message(callback_query.from_user.id, 'Рецепт блюда из меню')
+            bot.send_message(chat_id, recipe_html, parse_mode='HTML', reply_markup=kb.inline_kb_full)
+            bot.edit_message_text(
+                recipe_html,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=kb.inline_kb_full,
+                parse_mode='HTML'
+            )
         elif answer == 'get_shopping_list':
             bot.answer_callback_query(callback_query.id)
-            bot.send_message(callback_query.from_user.id, 'Список покупок')
+            bot.edit_message_text(
+                'Список покупок',
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=kb.inline_kb_full
+            )
 
 
     bot.infinity_polling(skip_pending=True)
@@ -87,6 +139,9 @@ def user_payment(token, pay_token):
 
 
 def main():
+    logger = telebot.logger
+    telebot.logger.setLevel(logging.DEBUG)
+
     load_dotenv()
 
     tg_token = os.getenv('BOT_TOKEN')
