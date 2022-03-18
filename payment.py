@@ -9,6 +9,17 @@ from dotenv import load_dotenv
 import keyboard as kb
 
 
+def get_user_info(user_id):
+    with open('users.json', 'r', encoding='utf-8') as json_file:
+        users = json.load(json_file)
+        if user_id in users:
+            user = users[user_id]
+            first_name = user['name']
+            last_name = user['last_name']
+            subscription = user['subscriptions']
+            return first_name, last_name, subscription
+
+
 def get_recipe_info():
     with open('recipes.json', 'r', encoding='utf-8') as json_file:
         recipes = json.load(json_file)
@@ -59,7 +70,7 @@ def user_payment(token, pay_token):
         )
 
     @bot.message_handler(content_types=['successful_payment'])
-    def got_payment(message):
+    def get_payment(message):
         pay_message = f'Спасибо за оплату! Вы оплатили ' \
                       f'{message.successful_payment.total_amount / 100} ' \
                       f'{message.successful_payment.currency} ' \
@@ -78,15 +89,20 @@ def user_payment(token, pay_token):
 
     @bot.message_handler(commands=['account'])
     def account(message):
-        bot.send_message(
-            message.chat.id,
-            'Добро пожаловать в личный кабинет'
-        )
-        bot.send_message(
-            message.chat.id,
-            "Для проверки статуса подписки нажмите на кнопку",
-            reply_markup=kb.inline_kb_full
-        )
+        user_id = str(message.from_user.id)
+        if get_user_info(user_id):
+            first_name, last_name, subscription = get_user_info(user_id)
+            bot.send_message(
+                message.chat.id,
+                f'<b>{first_name} {last_name}</b>, Добро пожаловать в личный кабинет!',
+                parse_mode='HTML',
+                reply_markup=kb.inline_kb_full
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                'Вы не являетесь зарегистрированным пользователем. Пожалуйста пройдите регистраци!'
+            )
 
     @bot.callback_query_handler(func=lambda call: True)
     def process_check_btn(callback_query):
