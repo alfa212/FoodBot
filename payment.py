@@ -91,7 +91,7 @@ def user_payment(token, pay_token):
     def account(message):
         user_id = str(message.from_user.id)
         if get_user_info(user_id):
-            first_name, last_name, subscription = get_user_info(user_id)
+            first_name, last_name, subscriptions = get_user_info(user_id)
             bot.send_message(
                 message.chat.id,
                 f'<b>{first_name} {last_name}</b>, Добро пожаловать в личный кабинет!',
@@ -108,11 +108,16 @@ def user_payment(token, pay_token):
     def process_check_btn(callback_query):
         answer = callback_query.data
         chat_id = callback_query.message.chat.id
-        # message_id = callback_query.message.id
+        user_id = str(callback_query.from_user.id)
+        first_name, last_name, subscriptions = get_user_info(user_id)
         title, ingredients, recipe_steps, image_path = get_recipe_info()
         if answer == 'subscription':
-            bot.answer_callback_query(callback_query.id)
-            bot.send_message(chat_id, 'Подписка оформлена', reply_markup=kb.inline_kb_full)
+            if len(subscriptions) > 0:
+                bot.answer_callback_query(callback_query.id)
+                bot.send_message(chat_id, 'Подписка оформлена', reply_markup=kb.inline_kb_full)
+            else:
+                bot.answer_callback_query(callback_query.id)
+                bot.send_message(chat_id, 'Подписка не оформлена', reply_markup=kb.inline_kb_full)
 
         elif answer == 'recipe':
             with open(image_path, 'rb') as file:
