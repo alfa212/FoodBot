@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 from random import choice
 
@@ -18,17 +17,11 @@ def get_recipe_info():
     recipe = recipes[rand_recipe_num]
 
     title = recipe['title']
-    ingredients = recipe['ingredients']
-    recipe_steps = recipe['recipe_steps']
+    ingredients = '\n'.join(recipe['ingredients'])
+    recipe_steps = '\n'.join(recipe['recipe_steps'])
     image_path = recipe['image_path']
 
-    recipe_html = f"""
-    <img src='{image_path}'>
-    <p><b>{title}</b></p>
-    <p>{' '.join(ingredients)}</p>
-    <p>{' '.join(recipe_steps)}</p>
-    """
-    return recipe_html
+    return title, ingredients, recipe_steps, image_path
 
 
 def user_payment(token, pay_token):
@@ -104,45 +97,29 @@ def user_payment(token, pay_token):
     def process_check_btn(callback_query):
         answer = callback_query.data
         chat_id = callback_query.message.chat.id
-        message_id = callback_query.message.id
-
-        if answer == 'check_subs':
+        # message_id = callback_query.message.id
+        title, ingredients, recipe_steps, image_path = get_recipe_info()
+        if answer == 'subscription':
             bot.answer_callback_query(callback_query.id)
-            bot.edit_message_text(
-                'Подписка оформлена',
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=kb.inline_kb_full
-            )
+            bot.send_message(chat_id, 'Подписка оформлена', reply_markup=kb.inline_kb_full)
 
-        elif answer == 'get_recipe':
-            recipe_html = get_recipe_info()
+        elif answer == 'recipe':
+            with open(image_path, 'rb') as file:
+                image = file.read()
             bot.answer_callback_query(callback_query.id)
-            bot.send_message(chat_id, recipe_html, parse_mode='HTML', reply_markup=kb.inline_kb_full)
-            bot.edit_message_text(
-                recipe_html,
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=kb.inline_kb_full,
-                parse_mode='HTML'
-            )
+            bot.send_message(chat_id, f'<b>{title}</b>', parse_mode='HTML')
+            bot.send_photo(chat_id, image)
+            bot.send_message(chat_id, ingredients)
+            bot.send_message(chat_id, recipe_steps, reply_markup=kb.inline_kb_full)
 
-        elif answer == 'get_shopping_list':
+        elif answer == 'shopping_list':
             bot.answer_callback_query(callback_query.id)
-            bot.edit_message_text(
-                'Список покупок',
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=kb.inline_kb_full
-            )
+            bot.send_message(chat_id, ingredients, reply_markup=kb.inline_kb_full)
 
     bot.infinity_polling(skip_pending=True)
 
 
 def main():
-    logger = telebot.logger
-    telebot.logger.setLevel(logging.DEBUG)
-
     load_dotenv()
 
     tg_token = os.getenv('BOT_TOKEN')
