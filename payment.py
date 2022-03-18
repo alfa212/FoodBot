@@ -4,6 +4,7 @@ import telebot
 from telebot import types
 from dotenv import load_dotenv
 
+import keyboard as kb
 
 def user_payment(token, pay_token):
     bot = telebot.TeleBot(token, parse_mode=None)
@@ -50,7 +51,7 @@ def user_payment(token, pay_token):
                       f'за подписку на индивидуальное меню'
 
         print('successful_payment:')
-        print(f'От пользователя: {message.from_user.id}\n'
+        print(f'От пользователя: {message.from_user.id} '
               f'поступил платеж с id: {message.successful_payment.telegram_payment_charge_id} '
               f'в размере: {message.successful_payment.total_amount / 100} {message.successful_payment.currency}')
 
@@ -59,6 +60,26 @@ def user_payment(token, pay_token):
             pay_message,
             parse_mode='Markdown'
         )
+
+
+    @bot.message_handler(commands=['account'])
+    def account(message):
+        bot.send_message(message.chat.id, 'Добро пожаловать в личный кабинет')
+        bot.send_message(message.chat.id, "Для проверки статуса подписки нажмите на кнопку", reply_markup=kb.inline_kb_full)
+
+
+    @bot.callback_query_handler(func=lambda call: True)
+    def process_check_subs(callback_query):
+        answer = callback_query.data
+        if answer == 'check_subs':
+            bot.answer_callback_query(callback_query.id)
+            bot.send_message(callback_query.from_user.id, 'Подписка оформлена!')
+        elif answer == 'get_recipe':
+            bot.answer_callback_query(callback_query.id)
+            bot.send_message(callback_query.from_user.id, 'Рецепт блюда из меню')
+        elif answer == 'get_shopping_list':
+            bot.answer_callback_query(callback_query.id)
+            bot.send_message(callback_query.from_user.id, 'Список покупок')
 
 
     bot.infinity_polling(skip_pending=True)
