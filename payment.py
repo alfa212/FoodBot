@@ -105,6 +105,7 @@ def user_payment(token, pay_token):
         answer = callback_query.data
         chat_id = callback_query.message.chat.id
         message_id = callback_query.message.id
+
         if answer == 'check_subs':
             bot.answer_callback_query(callback_query.id)
             bot.edit_message_text(
@@ -113,6 +114,7 @@ def user_payment(token, pay_token):
                 message_id=message_id,
                 reply_markup=kb.inline_kb_full
             )
+
         elif answer == 'get_recipe':
             recipe_html = get_recipe_info()
             bot.answer_callback_query(callback_query.id)
@@ -124,6 +126,7 @@ def user_payment(token, pay_token):
                 reply_markup=kb.inline_kb_full,
                 parse_mode='HTML'
             )
+
         elif answer == 'get_shopping_list':
             bot.answer_callback_query(callback_query.id)
             bot.edit_message_text(
@@ -133,9 +136,7 @@ def user_payment(token, pay_token):
                 reply_markup=kb.inline_kb_full
             )
 
-
     bot.infinity_polling(skip_pending=True)
-
 
 
 def main():
