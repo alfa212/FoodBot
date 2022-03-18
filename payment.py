@@ -34,7 +34,6 @@ def user_payment(token, pay_token):
         types.LabeledPrice(label='Подписка на 1 год', amount=120000),
     ]
 
-
     @bot.message_handler(commands=['buy'])
     def process_buy_command(message):
         bot.send_message(message.chat.id, 'Проверка тестовых платежей')
@@ -50,16 +49,14 @@ def user_payment(token, pay_token):
                 invoice_payload='some-invoice-payload-for-our-internal-use'
             )
 
-
     @bot.pre_checkout_query_handler(func=lambda query: True)
     def checkout(pre_checkout_query):
         bot.answer_pre_checkout_query(
             pre_checkout_query.id,
             ok=True,
             error_message='Инопланетяне пытались угнать ваш CVV, но мы защитили ваши данные, '
-                          'поппробуйте оплатить через пару минут.'
+                          'попробуйте оплатить через пару минут.'
         )
-
 
     @bot.message_handler(content_types=['successful_payment'])
     def got_payment(message):
@@ -79,7 +76,6 @@ def user_payment(token, pay_token):
             parse_mode='Markdown'
         )
 
-
     @bot.message_handler(commands=['account'])
     def account(message):
         bot.send_message(
@@ -91,7 +87,6 @@ def user_payment(token, pay_token):
             "Для проверки статуса подписки нажмите на кнопку",
             reply_markup=kb.inline_kb_full
         )
-
 
     @bot.callback_query_handler(func=lambda call: True)
     def process_check_btn(callback_query):
