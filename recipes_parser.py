@@ -8,9 +8,7 @@ from bs4 import BeautifulSoup
 from requests import HTTPError
 from transliterate import get_translit_function
 
-
-DIET_TYPES = ['classic_diet', 'keto_diet', 'vegan_diet']
-ALLERGY_TYPES = ['eggs', 'lactose', 'nuts']
+from setup import DIET_TYPES, ALLERGY_TYPES
 
 
 def save_recipes_json(recipes):
