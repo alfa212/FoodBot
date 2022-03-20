@@ -124,10 +124,13 @@ def user_payment(token, pay_token, admin_id):
             with open(image_path, 'rb') as file:
                 image = file.read()
             bot.answer_callback_query(callback_query.id)
-            bot.send_message(chat_id, f'<b>{title}</b>', parse_mode='HTML')
-            bot.send_photo(chat_id, image)
-            bot.send_message(chat_id, ingredients)
-            bot.send_message(chat_id, recipe_steps, reply_markup=kb.inline_kb_full)
+            bot.send_photo(
+                chat_id=chat_id,
+                photo=image,
+                caption=f'<b>{title}</b>\n\n{ingredients}\n\n{recipe_steps}',
+                parse_mode='HTML',
+                reply_markup=kb.inline_kb_full
+            )
 
         elif answer == 'shopping_list':
             bot.answer_callback_query(callback_query.id)
