@@ -13,12 +13,12 @@ from recipes_parser import main as parser
 def get_user_info(user_id):
     with open('users.json', 'r', encoding='utf-8') as json_file:
         users = json.load(json_file)
-        if user_id in users:
-            user = users[user_id]
-            first_name = user['name']
-            last_name = user['last_name']
-            subscription = user['subscriptions']
-            return first_name, last_name, subscription
+    if user_id in users:
+        user = users[user_id]
+        first_name = user['name']
+        last_name = user['last_name']
+        subscription = user['subscriptions']
+        return first_name, last_name, subscription
 
 
 def get_recipe_info():
@@ -45,6 +45,11 @@ def user_payment(token, pay_token, admin_id):
         types.LabeledPrice(label='Подписка на 6 месяцев', amount=60000),
         types.LabeledPrice(label='Подписка на 1 год', amount=120000),
     ]
+
+    @bot.message_handler(commands=['start'])
+    def start(message):
+        bot.send_message(message.chat.id, 'Привет', reply_markup=kb.markup_kb_full)
+
 
     @bot.message_handler(commands=['buy'])
     def process_buy_command(message):
