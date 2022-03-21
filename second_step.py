@@ -56,7 +56,7 @@ def user_registration(token, users):
             with open('users.json', mode='w', encoding='utf-8') as file:
                 json.dump(json.dumps(users), file)
 
-            bot.send_message(message.chat.id, str(users[f'{message.from_user.id}']))
+            #bot.send_message(message.chat.id, str(users[f'{message.from_user.id}']))
 
 
             markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
