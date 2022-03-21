@@ -1,32 +1,86 @@
 import os
+import json
+from random import choice
 
 import telebot
 from telebot import types
 from dotenv import load_dotenv
 
 import keyboard as kb
+from recipes_parser import main as parser
 
 
-def user_registration(token, pay_token):
+def get_user_info(user_id):
+    with open('users.json', 'r', encoding='utf-8') as json_file:
+        users = json.load(json_file)
+        if user_id in users:
+            user = users[user_id]
+            first_name = user['name']
+            last_name = user['last_name']
+            subscription = user['subscriptions']
+            return first_name, last_name, subscription
+
+def add_new_user(user_id):
+    with open('users.json', 'r', encoding='utf-8') as json_file:
+        users = json.load(json_file)
+    users[user_id] = users["185027933"]
+    file_name = 'users.json'
+    with open(file_name, 'w', encoding='utf-8') as json_file:
+        json.dump(users, json_file, ensure_ascii=False)
+
+
+def get_recipe_info():
+    with open('recipes.json', 'r', encoding='utf-8') as json_file:
+        recipes = json.load(json_file)
+    rand_recipe_num = choice(list(recipes))
+
+    recipe = recipes[rand_recipe_num]
+
+    title = recipe['title']
+    ingredients = '\n'.join(recipe['ingredients'])
+    recipe_steps = '\n'.join(recipe['recipe_steps'])
+    image_path = recipe['image_path']
+
+    return title, ingredients, recipe_steps, image_path
+
+
+def user_registration(token, pay_token, admin_id):
     bot = telebot.TeleBot(token, parse_mode=None)
     answers = []
     allergies_answers = []
+    user_info = []
     allergies = {"nuts": "Орехи", "lactose": "Лактоза"}
     subscription_periods = ["1", "3", "6", "12"]
     one_meal_cost = 1
 
-    @bot.message_handler(commands=['start', 'help'])
+    @bot.message_handler(commands=['start'])
     def send_welcome(message):
+        first_name = message.from_user.first_name
+        last_name = message.from_user.last_name if message.from_user.last_name else ''
+        full_name = f'{first_name} {last_name}'
+        user_info.append(full_name)
         markup = types.InlineKeyboardMarkup()
-        start_subs = types.InlineKeyboardButton("Оформить подписку", callback_data='start_subs')
-        markup.add(start_subs)
-        bot.send_message(message.chat.id, "Для оформления подписки нажмите на кнопку", reply_markup=markup)
+        markup.add(
+            types.InlineKeyboardButton('Да', callback_data='user_name'),
+            # types.InlineKeyboardButton('Другое имя', callback_data='custom_name')
+        )
+        bot.send_message(message.chat.id, f'Добрый день, {full_name}!\nМогу я дальше вас так называть или хотите ввести другое имя?', reply_markup=markup)
 
     @bot.callback_query_handler(func=lambda call: True)
     def answer(call):
         markup = types.InlineKeyboardMarkup(row_width=1)
         if call.message:
-            if call.data == "start_subs":
+            if call.data == "custom_name":
+                bot.answer_callback_query(call.id)
+                bot.send_message(call.message.chat.id, "Отправьте мне ваши имя и фамилию:")
+                if ' ' in call.message.text:
+                    user_info.append(call.data)
+                    bot.send_message(call.message.chat.id, "Отправьте мне ваш контактный номер телефона:")
+                    if call.message.text:
+                        user_info.append(call.data)
+                        call.data = 'user_name'
+            if call.data == "user_name":
+                user_info.append(call.data or call.message.text)
                 bot.answer_callback_query(call.id)
                 markup.add(
                     types.InlineKeyboardButton("Классическая", callback_data='classic_diet'),
@@ -130,7 +184,7 @@ def user_registration(token, pay_token):
                         pre_checkout_query.id,
                         ok=True,
                         error_message='Инопланетяне пытались угнать ваш CVV, но мы защитили ваши данные, '
-                                      'поппробуйте оплатить через пару минут.'
+                                      'попробуйте оплатить через пару минут.'
                     )
 
 
@@ -152,55 +206,72 @@ def user_registration(token, pay_token):
                         parse_mode='Markdown'
                     )
 
+                    user_id = message.from_user.id
+                    add_new_user(user_id)
 
-                @bot.message_handler(commands=['account'])
-                def account(message):
-                    bot.send_message(
-                        message.chat.id,
-                        'Добро пожаловать в личный кабинет'
-                    )
-                    bot.send_message(
-                        message.chat.id,
-                        "Для проверки статуса подписки нажмите на кнопку",
-                        reply_markup=kb.inline_kb_full
-                    )
+    @bot.message_handler(commands=['account'])
+    def account(message):
+        user_id = str(message.from_user.id)
+        if get_user_info(user_id):
+            first_name, last_name, subscriptions = get_user_info(user_id)
+            bot.send_message(
+                message.chat.id,
+                f'<b>{first_name} {last_name}</b>, Добро пожаловать в личный кабинет!',
+                parse_mode='HTML',
+                reply_markup=kb.inline_kb_full
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                'Вы не являетесь зарегистрированным пользователем. Пожалуйста пройдите регистрацию!'
+            )
 
 
-                @bot.callback_query_handler(func=lambda call: True)
-                def process_check_btn(callback_query):
-                    answer = callback_query.data
-                    chat_id = callback_query.message.chat.id
-                    message_id = callback_query.message.id
+    @bot.callback_query_handler(func=lambda call: True)
+    def process_check_btn(callback_query):
+        answer = callback_query.data
+        chat_id = callback_query.message.chat.id
+        user_id = str(callback_query.from_user.id)
+        first_name, last_name, subscriptions = get_user_info(user_id)
+        title, ingredients, recipe_steps, image_path = get_recipe_info()
+        if answer == 'subscription':
+            if len(subscriptions) > 0:
+                bot.answer_callback_query(callback_query.id)
+                bot.send_message(chat_id, 'Подписка оформлена', reply_markup=kb.inline_kb_full)
+            else:
+                bot.answer_callback_query(callback_query.id)
+                bot.send_message(chat_id, 'Подписка не оформлена', reply_markup=kb.inline_kb_full)
 
-                    if answer == 'check_subs':
-                        bot.answer_callback_query(callback_query.id)
-                        bot.edit_message_text(
-                            'Подписка оформлена',
-                            chat_id=chat_id,
-                            message_id=message_id,
-                            reply_markup=kb.inline_kb_full
-                        )
+        elif answer == 'recipe':
+            with open(image_path, 'rb') as file:
+                image = file.read()
+            bot.answer_callback_query(callback_query.id)
+            bot.send_photo(
+                chat_id=chat_id,
+                photo=image,
+                caption=f'<b>{title}</b>\n\n{ingredients}\n\n{recipe_steps}',
+                parse_mode='HTML',
+                reply_markup=kb.inline_kb_full
+            )
 
-                    # elif answer == 'get_recipe':
-                    #     recipe_html = get_recipe_info()
-                    #     bot.answer_callback_query(callback_query.id)
-                    #     bot.send_message(chat_id, recipe_html, parse_mode='HTML', reply_markup=kb.inline_kb_full)
-                    #     bot.edit_message_text(
-                    #         recipe_html,
-                    #         chat_id=chat_id,
-                    #         message_id=message_id,
-                    #         reply_markup=kb.inline_kb_full,
-                    #         parse_mode='HTML'
-                    #     )
+        elif answer == 'shopping_list':
+            bot.answer_callback_query(callback_query.id)
+            bot.send_message(chat_id, ingredients, reply_markup=kb.inline_kb_full)
 
-                    elif answer == 'get_shopping_list':
-                        bot.answer_callback_query(callback_query.id)
-                        bot.edit_message_text(
-                            'Список покупок',
-                            chat_id=chat_id,
-                            message_id=message_id,
-                            reply_markup=kb.inline_kb_full
-                        )
+    @bot.message_handler(commands=['parse'])
+    def parse_recipe(message):
+        user = message.from_user.id
+        if user == int(admin_id):
+            parser()
+            bot.send_message(
+                message.chat.id,
+                'Рецепты добавлены в базу данных'
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                'Данная функция доступна только для администратора'
+            )
 
     bot.infinity_polling()
 
@@ -210,8 +281,9 @@ if __name__ == '__main__':
 
     tg_token = os.getenv('TELEGRAM_BOT_TOKEN')
     pay_token = os.getenv('PAY_TOKEN')
+    admin_id = os.getenv('ADMIN_ID')
 
-    user_registration(tg_token, pay_token)
+    user_registration(tg_token, pay_token, admin_id)
 
 
 
