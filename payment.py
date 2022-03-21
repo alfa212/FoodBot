@@ -7,6 +7,7 @@ from telebot import types
 from dotenv import load_dotenv
 
 import keyboard as kb
+from recipes_parser import main as parser
 
 
 def get_user_info(user_id):
@@ -35,7 +36,7 @@ def get_recipe_info():
     return title, ingredients, recipe_steps, image_path
 
 
-def user_payment(token, pay_token):
+def user_payment(token, pay_token, admin_id):
     bot = telebot.TeleBot(token, parse_mode=None)
 
     prices = [
@@ -123,14 +124,33 @@ def user_payment(token, pay_token):
             with open(image_path, 'rb') as file:
                 image = file.read()
             bot.answer_callback_query(callback_query.id)
-            bot.send_message(chat_id, f'<b>{title}</b>', parse_mode='HTML')
-            bot.send_photo(chat_id, image)
-            bot.send_message(chat_id, ingredients)
-            bot.send_message(chat_id, recipe_steps, reply_markup=kb.inline_kb_full)
+            bot.send_photo(
+                chat_id=chat_id,
+                photo=image,
+                caption=f'<b>{title}</b>\n\n{ingredients}\n\n{recipe_steps}',
+                parse_mode='HTML',
+                reply_markup=kb.inline_kb_full
+            )
 
         elif answer == 'shopping_list':
             bot.answer_callback_query(callback_query.id)
             bot.send_message(chat_id, ingredients, reply_markup=kb.inline_kb_full)
+
+    @bot.message_handler(commands=['parse'])
+    def parse_recipe(message):
+        user = message.from_user.id
+        if user == int(admin_id):
+            parser()
+            bot.send_message(
+                message.chat.id,
+                'Рецепты добавлены в базу данных'
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                'Данная функция доступна только для администратора'
+            )
+
 
     bot.infinity_polling(skip_pending=True)
 
@@ -140,8 +160,9 @@ def main():
 
     tg_token = os.getenv('BOT_TOKEN')
     pay_token = os.getenv('PAY_TOKEN')
+    admin_id = os.getenv('ADMIN_ID')
 
-    user_payment(tg_token, pay_token)
+    user_payment(tg_token, pay_token, admin_id)
 
 
 if __name__ == '__main__':
