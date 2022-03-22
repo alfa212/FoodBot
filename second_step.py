@@ -23,7 +23,25 @@ def get_user_info(user_id):
 def add_new_user(user_id):
     with open('users.json', 'r', encoding='utf-8') as json_file:
         users = json.load(json_file)
-    users[user_id] = users["185027933"]
+    users[user_id] = {
+        "name": "John",
+        "last_name": "Sena",
+        "phone_number": "+76661366613",
+        "subscriptions": [
+            1235,
+            3456,
+            2346
+        ],
+        "diet": "keto_diet",
+        "meals_number": 6,
+        "persons_number": 1,
+        "allergies": [
+            "nuts",
+            "lactose"
+        ],
+        "favourite_dishes": [],
+        "disliked_dishes": []
+    }
     file_name = 'users.json'
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(users, json_file, ensure_ascii=False)
@@ -46,7 +64,7 @@ def get_recipe_info():
 
 def user_registration(token, pay_token, admin_id):
     bot = telebot.TeleBot(token, parse_mode=None)
-    answers = []
+    answers = {}
     allergies_answers = []
     user_info = []
     allergies = {"nuts": "Орехи", "lactose": "Лактоза"}
@@ -97,7 +115,7 @@ def user_registration(token, pay_token, admin_id):
                     types.InlineKeyboardButton("Три раза в день", callback_data='3_eat_time')
                 )
                 bot.send_message(call.message.chat.id, "Выберите количество приемов пищи:", reply_markup=markup)
-                answers.append(call.data)
+                answers["diet"] = call.data
                 print('Eat time')
             if call.data == "1_eat_time" or call.data == "2_eat_time" or call.data == "3_eat_time":
                 bot.answer_callback_query(call.id)
@@ -108,7 +126,7 @@ def user_registration(token, pay_token, admin_id):
                     types.InlineKeyboardButton("4", callback_data='4_person')
                 )
                 bot.send_message(call.message.chat.id, "Выберите количество персон:", reply_markup=markup)
-                answers.append(call.data)
+                answers["meals_number"] = int(call.data[0])
                 print('Person')
             if call.data == "1_person" or call.data == "2_person" or call.data == "3_person" or call.data == "4_person":
                 bot.answer_callback_query(call.id)
@@ -120,7 +138,7 @@ def user_registration(token, pay_token, admin_id):
                     types.InlineKeyboardButton("У меня нет аллергии", callback_data="no_allergy")
                 )
                 bot.send_message(call.message.chat.id, "Есть ли у вас аллергия? На что?:", reply_markup=markup)
-                answers.append(call.data)
+                answers["persons_number"] = int(call.data[0])
                 print('Allergy')
             if call.data in allergies:
                 bot.answer_callback_query(call.id)
@@ -140,8 +158,6 @@ def user_registration(token, pay_token, admin_id):
                                       message_id=call.message.message_id, reply_markup=markup)
                 allergies_answers.append(call.data)
                 print('Выбор')
-                allergies_answers.append(call.data)
-                answers.append(call.data)
             if call.data == "no_allergy" or call.data == "end_allergy":
                 bot.answer_callback_query(call.id)
                 for period in subscription_periods:
@@ -149,24 +165,21 @@ def user_registration(token, pay_token, admin_id):
                         types.InlineKeyboardButton(period, callback_data=period)
                     )
                 bot.send_message(call.message.chat.id, "Выберите срок подписки (месяцев):", reply_markup=markup)
-                # answers.append(allergies_answers)
-                allergies_answers.clear()
-                print('Period')
+                answers["allergies"] = allergies_answers
             if call.data in subscription_periods:
                 bot.answer_callback_query(call.id)
-                total_price = round(one_meal_cost * int(answers[1][0]) * int(answers[2][0]) * 30 * int(call.data) * (int(call.data) * 1 / (int(call.data) * 1.67)))
+                total_price = round(one_meal_cost * answers["meals_number"] * answers["persons_number"] * 30 * int(call.data) * (int(call.data) * 1 / (int(call.data) * 1.67)))
                 markup.add(
                     types.InlineKeyboardButton("Отлично! Оформляем!", callback_data="/buy")
                 )
                 bot.send_message(call.message.chat.id, f"Стоимость вашей подписки составит: {total_price} руб.", reply_markup=markup)
-                answers.append(total_price)
+                answers["total_price"] = total_price
                 print(answers)
             if call.data == "/buy":
                 print('нажал подписку')
                 bot.answer_callback_query(call.id)
                 bot.send_message(call.message.chat.id, 'Проверка тестовых платежей')
-                price = types.LabeledPrice(label='Подписка на 1 месяц', amount=answers[-1]*100)
-                print(answers[-1])
+                price = types.LabeledPrice(label='Подписка на 1 месяц', amount=answers["total_price"]*100)
                 bot.send_invoice(
                     call.message.chat.id,
                     title=price.label,
