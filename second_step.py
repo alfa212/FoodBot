@@ -20,28 +20,27 @@ def get_user_info(user_id):
             subscription = user['subscriptions']
             return first_name, last_name, subscription
 
-def add_new_user(user_id):
-    with open('users.json', 'r', encoding='utf-8') as json_file:
-        users = json.load(json_file)
+def add_new_user(user_id, name, last_name, phone_num, subscription, diet, meals_number, persons_number, allergies):
+    try:
+        with open('users.json', 'r', encoding='utf-8') as json_file:
+            users = json.load(json_file)
+    except:
+        users = {}
+
     users[user_id] = {
-        "name": "John",
-        "last_name": "Sena",
-        "phone_number": "+76661366613",
-        "subscriptions": [
-            1235,
-            3456,
-            2346
-        ],
-        "diet": "keto_diet",
-        "meals_number": 6,
-        "persons_number": 1,
-        "allergies": [
-            "nuts",
-            "lactose"
-        ],
+        "name": name,
+        "last_name": last_name,
+        "phone_number": phone_num,
+        "subscriptions": [],
+        "diet": diet,
+        "meals_number": meals_number,
+        "persons_number": persons_number,
+        "allergies": allergies,
         "favourite_dishes": [],
         "disliked_dishes": []
     }
+    users[user_id]["subscriptions"].append(subscription)
+
     file_name = 'users.json'
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(users, json_file, ensure_ascii=False)
@@ -66,7 +65,7 @@ def user_registration(token, pay_token, admin_id):
     bot = telebot.TeleBot(token, parse_mode=None)
     answers = {}
     allergies_answers = []
-    user_info = []
+    user_info = {}
     allergies = {"nuts": "Орехи", "lactose": "Лактоза"}
     subscription_periods = ["1", "3", "6", "12"]
     one_meal_cost = 1
@@ -76,7 +75,10 @@ def user_registration(token, pay_token, admin_id):
         first_name = message.from_user.first_name
         last_name = message.from_user.last_name if message.from_user.last_name else ''
         full_name = f'{first_name} {last_name}'
-        user_info.append(full_name)
+        user_info["first_name"] = first_name
+        user_info["last_name"] = last_name or "no data"
+        user_info["full_name"] = full_name
+        print(user_info["last_name"])
         markup = types.InlineKeyboardMarkup()
         markup.add(
             types.InlineKeyboardButton('Да', callback_data='user_name'),
@@ -92,13 +94,13 @@ def user_registration(token, pay_token, admin_id):
                 bot.answer_callback_query(call.id)
                 bot.send_message(call.message.chat.id, "Отправьте мне ваши имя и фамилию:")
                 if ' ' in call.message.text:
-                    user_info.append(call.data)
+                    user_info["full_name"] = call.data
                     bot.send_message(call.message.chat.id, "Отправьте мне ваш контактный номер телефона:")
                     if call.message.text:
-                        user_info.append(call.data)
+                        user_info["full_name"] = call.data
                         call.data = 'user_name'
             if call.data == "user_name":
-                user_info.append(call.data or call.message.text)
+                user_info["full_name"] = call.data or call.message.text
                 bot.answer_callback_query(call.id)
                 markup.add(
                     types.InlineKeyboardButton("Классическая", callback_data='classic_diet'),
@@ -220,7 +222,10 @@ def user_registration(token, pay_token, admin_id):
                     )
 
                     user_id = message.from_user.id
-                    add_new_user(user_id)
+                    add_new_user(user_id, user_info["first_name"], user_info["last_name"], "+799912345678",
+                                 message.successful_payment.telegram_payment_charge_id, answers["diet"],
+                                 answers["meals_number"], answers["persons_number"],
+                                 answers["allergies"])
 
     @bot.message_handler(commands=['account'])
     def account(message):
